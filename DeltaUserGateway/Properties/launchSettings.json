@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DeltaUserGateway": {
+      "commandName": "Project",
+      "commandLineArgs": "E:/gateway.config"
+    }
+  }
+}

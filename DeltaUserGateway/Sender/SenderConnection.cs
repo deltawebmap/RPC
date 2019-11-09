@@ -30,12 +30,25 @@ namespace DeltaUserGateway.Sender
         /// </summary>
         public byte[] salt;
 
+        /// <summary>
+        /// If this is false, we are in the process of downloading the length first
+        /// </summary>
+        public bool has_length;
+
         public SenderConnection(Socket sock)
         {
             this.sock = sock;
-            buffer = new byte[Program.config.buffer_size * 2];
+            buffer = new byte[4];
             is_authenticated = false;
             salt = LibDeltaSystem.Tools.SecureStringTool.GenerateSecureRandomBytes(32);
+
+            //First, listen for the length to be sent to us
+            sock.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, OnDataReceived, 0);
+        }
+
+        public void Log(string content)
+        {
+            //Ignore for now
         }
 
         /// <summary>
@@ -43,7 +56,7 @@ namespace DeltaUserGateway.Sender
         /// </summary>
         public void BeginReceive()
         {
-            sock.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, OnDataReceived, null);
+            sock.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, OnDataReceived, 0);
         }
 
         /// <summary>
@@ -56,19 +69,37 @@ namespace DeltaUserGateway.Sender
             {
                 //Get length
                 int len = sock.EndReceive(ar);
+                int offset = ((int)ar.AsyncState) + len;
 
+                //If we downloaded no bytes, we have no remaining bytes to download
+                if (len > 0)
+                {
+                    sock.BeginReceive(buffer, offset, buffer.Length - offset, SocketFlags.None, OnDataReceived, offset);
+                    return;
+                }
+                
                 //Handle this data
+                if(!has_length)
+                {
+                    //We'll need to download the real content
+                    int length = HelperReadInt32(buffer, 0);
+                    Log("About to downlaod " + length);
+                    buffer = new byte[length];
+                    has_length = true;
+                    BeginReceive();
+                    return;
+                }
 
-                if (is_authenticated)
-                    HandleDataAuthenticated(len);
-                else
-                    HandleDataUnauthenticated(len);
+                //We have the content.
+                HandleDataAuthenticated();
 
                 //Listen for next messages
+                has_length = false;
+                buffer = new byte[4];
                 BeginReceive();
-            } catch
+            } catch(Exception ex)
             {
-                Console.WriteLine("RPC Socket Error");
+                Log("RPC Socket Error "+ex.Message+ex.StackTrace);
                 try
                 {
                     sock.Close();
@@ -86,39 +117,23 @@ namespace DeltaUserGateway.Sender
         }
 
         /// <summary>
-        /// Called when we get data while unauthenticated
-        /// </summary>
-        /// <param name="length"></param>
-        private void HandleDataUnauthenticated(int length)
-        {
-            //Verify this. First, compute the intended result
-            byte[] intended = HMACTool.ComputeHMAC(SenderServer.key, salt, SenderServer.key);
-
-            //Compare
-            bool ok = HMACTool.CompareHMAC(intended, buffer);
-
-            //If this failed, shut down the connection
-            if (!ok)
-                throw new Exception("Authentication failed!");
-            is_authenticated = ok;
-            Console.WriteLine("Authenticated!");
-        }
-
-        /// <summary>
         /// Called when we get data while authenticated
         /// </summary>
         /// <param name="length"></param>
-        private void HandleDataAuthenticated(int length)
+        private void HandleDataAuthenticated()
         {
+            //Test
+            //System.IO.File.WriteAllBytes("/root/rp/delta_packets/"+(test++)+".bin", buffer);
+            
             //Get the HMAC from the data because we are about to overwrite it
             byte[] hmac = new byte[32];
             Array.Copy(buffer, 0, hmac, 0, 32);
 
             //Get the message buffer so that we can do conversions on it
-            if (length < 32)
+            if (buffer.Length < 32)
                 throw new Exception("Data sent is too small!");
-            byte[] content = new byte[length - 32];
-            Array.Copy(buffer, 32, content, 0, length - 32);
+            byte[] content = new byte[buffer.Length - 32];
+            Array.Copy(buffer, 32, content, 0, buffer.Length - 32);
 
             //Calculate the HMAC
             byte[] intended = HMACTool.ComputeHMAC(SenderServer.key, salt, SenderServer.key, content);
@@ -131,6 +146,7 @@ namespace DeltaUserGateway.Sender
             offset += 4;
             int chunkCount = HelperReadInt32(content, offset);
             offset += 4;
+            Log($"Opcode {opcode}, count {chunkCount}, len {buffer.Length}");
 
             //Now, read all chunks
             byte[][] chunks = new byte[chunkCount][];
@@ -138,6 +154,7 @@ namespace DeltaUserGateway.Sender
             {
                 //Read length of the chunk
                 int chunkLength = HelperReadInt32(content, offset);
+                Log("Chunk length " + chunkLength);
                 offset += 4;
 
                 //Read chunk

@@ -29,9 +29,6 @@ namespace DeltaUserGateway.Sender
             //Create new connection
             SenderConnection conn = new SenderConnection(sock);
 
-            //Set up
-            conn.BeginReceive();
-
             //Send salt
             sock.Send(conn.salt);
 
