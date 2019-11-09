@@ -48,7 +48,8 @@ namespace DeltaUserGateway.Sender
 
         public void Log(string content)
         {
-            //Ignore for now
+            if (Program.config.debug_mode)
+                Console.WriteLine("[SenderConnection -> Debug] " + content);
         }
 
         /// <summary>
@@ -83,7 +84,13 @@ namespace DeltaUserGateway.Sender
                 {
                     //We'll need to download the real content
                     int length = HelperReadInt32(buffer, 0);
-                    Log("About to downlaod " + length);
+
+                    //There is a maximum size we can use when we aren't authenticated. Check if it is exceeded
+                    if (!is_authenticated && length > 100)
+                        throw new Exception("Allocated size is too large. Authenticate first before sending a request this large.");
+
+                    //Create buffers
+                    Log("About to download " + length);
                     buffer = new byte[length];
                     has_length = true;
                     BeginReceive();
@@ -122,9 +129,6 @@ namespace DeltaUserGateway.Sender
         /// <param name="length"></param>
         private void HandleDataAuthenticated()
         {
-            //Test
-            //System.IO.File.WriteAllBytes("/root/rp/delta_packets/"+(test++)+".bin", buffer);
-            
             //Get the HMAC from the data because we are about to overwrite it
             byte[] hmac = new byte[32];
             Array.Copy(buffer, 0, hmac, 0, 32);
@@ -166,8 +170,26 @@ namespace DeltaUserGateway.Sender
             //Now, handle this
             switch(opcode)
             {
+                case 0: HandleRPCAuthEvent(chunks); break;
                 case 1: HandleRPCSendEvent(chunks); break;
+                default: throw new Exception($"Unknown opcode {opcode}, this is probably a corrupted message!");
             }
+        }
+
+        /// <summary>
+        /// Handles an incoming RPC auth message. Opcode 0
+        /// </summary>
+        /// <param name="chunks"></param>
+        private void HandleRPCAuthEvent(byte[][] chunks)
+        {
+            //Calculate the HMAC
+            byte[] intended = HMACTool.ComputeHMAC(SenderServer.key, salt, SenderServer.key);
+            if (!HMACTool.CompareHMAC(intended, chunks[0]))
+                throw new Exception("Failed to authenticate!");
+
+            //Auth OK!
+            is_authenticated = true;
+            Log("Authenticated!");
         }
 
         /// <summary>
@@ -176,6 +198,10 @@ namespace DeltaUserGateway.Sender
         /// <param name="chunks"></param>
         private void HandleRPCSendEvent(byte[][] chunks)
         {
+            //Stop if we're not authenticated
+            if (!is_authenticated)
+                throw new Exception("Attempted to run a command that requires authentication.");
+            
             //Decode the first chunk as a filter
             RPCFilter filter = JsonConvert.DeserializeObject<RPCFilter>(Encoding.UTF8.GetString(chunks[0]));
 

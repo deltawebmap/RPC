@@ -10,6 +10,8 @@ namespace DeltaUserGateway
 
         public string key;
 
+        public bool debug_mode;
+
         public int port;
         public int buffer_size;
         public int timeout_seconds;
