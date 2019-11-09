@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Collections.Concurrent;
-using LibDeltaSystem.PRC;
+using LibDeltaSystem.RPC;
 using System.Threading.Tasks;
 using LibDeltaSystem.Db.Content;
 

@@ -1,4 +1,4 @@
-﻿using LibDeltaSystem.PRC.Payloads;
+﻿using LibDeltaSystem.RPC.Payloads;
 using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
@@ -69,7 +69,7 @@ namespace DeltaUserGateway
             {
                 session_id = session.id,
                 host = "rpc-prod"
-            }, LibDeltaSystem.PRC.RPCOpcode.RPCSetSessionID, null);
+            }, LibDeltaSystem.RPC.RPCOpcode.RPCSetSessionID, null);
 
             //Flush queue
             Flush();
