@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28010.2046
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeltaUserGateway", "DeltaUserGateway\DeltaUserGateway.csproj", "{62BF54D4-A841-4201-9228-253E32A21D28}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LibDeltaSystem", "..\LibDeltaSystem\LibDeltaSystem\LibDeltaSystem.csproj", "{BB057FA0-C07F-4E11-8E79-7CC418A9E2C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{62BF54D4-A841-4201-9228-253E32A21D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62BF54D4-A841-4201-9228-253E32A21D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62BF54D4-A841-4201-9228-253E32A21D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB057FA0-C07F-4E11-8E79-7CC418A9E2C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB057FA0-C07F-4E11-8E79-7CC418A9E2C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB057FA0-C07F-4E11-8E79-7CC418A9E2C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB057FA0-C07F-4E11-8E79-7CC418A9E2C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
