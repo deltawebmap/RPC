@@ -1,4 +1,5 @@
-﻿using LibDeltaSystem;
+﻿using DeltaUserGateway.Sender;
+using LibDeltaSystem;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Newtonsoft.Json;
@@ -15,6 +16,7 @@ namespace DeltaUserGateway
     {
         public static GatewayConfig config;
         public static DeltaConnection conn;
+        public static SenderServerV2 sender;
 
         static void Main(string[] args)
         {
@@ -32,7 +34,9 @@ namespace DeltaUserGateway
             await conn.Connect();
 
             //Start the sender server
-            Sender.SenderServer.StartServer(Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
+            //Sender.SenderServer.StartServer(Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
+            sender = new SenderServerV2(conn, Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
+            sender.StartServer();
 
             //Set up web server
             var host = new WebHostBuilder()

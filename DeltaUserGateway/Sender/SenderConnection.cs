@@ -204,6 +204,7 @@ namespace DeltaUserGateway.Sender
             
             //Decode the first chunk as a filter
             RPCFilter filter = JsonConvert.DeserializeObject<RPCFilter>(Encoding.UTF8.GetString(chunks[0]));
+            Console.WriteLine("Distributing msg " + Encoding.UTF8.GetString(chunks[1]));
 
             //Distribute messages
             SessionHolder.DistributeMessage(filter, chunks[1]);
