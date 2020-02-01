@@ -38,9 +38,15 @@ namespace DeltaUserGateway
         /// </summary>
         public string steam_id;
 
-        public RPCSession(string id)
+        /// <summary>
+        /// The type of RPC session this is
+        /// </summary>
+        public RPCType type;
+
+        public RPCSession(string id, RPCType type)
         {
             this.id = id;
+            this.type = type;
             this.queue = new ConcurrentQueue<byte[]>();
         }
 
@@ -50,7 +56,7 @@ namespace DeltaUserGateway
         /// <param name="access_token">User access token. Should always be valid.</param>
         /// <param name="session_id">Session ID. May or not be valid.</param>
         /// <returns></returns>
-        public static async Task<RPCSession> AuthenticateSession(string access_token, string session_id)
+        public static async Task<RPCSession> AuthenticateSession(string access_token, string session_id, RPCType type)
         {
             //Authenticate this user
             DbUser user = await Program.conn.AuthenticateUserToken(access_token);
@@ -59,11 +65,11 @@ namespace DeltaUserGateway
 
             //Search for this session in the list of sessions.
             RPCSession session = null;
-            if (SessionHolder.TryGetSessionByID(session_id, out session))
+            if (SessionHolder.TryGetSessionByID(session_id, type, out session))
                 return session;
 
             //Generate a unique ID and add a session
-            session = SessionHolder.MakeSession();
+            session = SessionHolder.MakeSession(type);
 
             //Set some data on the session
             session.user_id = user.id;

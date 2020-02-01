@@ -2,7 +2,7 @@
   "profiles": {
     "DeltaUserGateway": {
       "commandName": "Project",
-      "commandLineArgs": "E:/gateway.config"
+      "commandLineArgs": "C:\\Users\\Roman\\Documents\\delta_dev\\backend\\rpc\\rpc_config.json"
     }
   }
 }

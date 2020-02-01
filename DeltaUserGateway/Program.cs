@@ -34,7 +34,6 @@ namespace DeltaUserGateway
             await conn.Connect();
 
             //Start the sender server
-            //Sender.SenderServer.StartServer(Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
             sender = new SenderServerV2(conn, Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
             sender.StartServer();
 
@@ -75,8 +74,10 @@ namespace DeltaUserGateway
         {
             try
             {
-                if (e.Request.Path == "/v1")
-                    await AcceptV1Request(e);
+                if (e.Request.Path == "/rpc/v1")
+                    await AcceptV1Request(e, RPCType.RPCSession);
+                if (e.Request.Path == "/notifications/v1")
+                    await AcceptV1Request(e, RPCType.RPCNotifications);
                 else if (e.Request.Path == "/")
                     await AcceptRootRequest(e);
                 else
@@ -93,10 +94,10 @@ namespace DeltaUserGateway
             }
         }
 
-        public static async Task AcceptV1Request(Microsoft.AspNetCore.Http.HttpContext e)
+        public static async Task AcceptV1Request(Microsoft.AspNetCore.Http.HttpContext e, RPCType type)
         {
             //First, authenticate this user
-            RPCSession session = await RPCSession.AuthenticateSession(e.Request.Query["access_token"], e.Request.Query["session_id"]);
+            RPCSession session = await RPCSession.AuthenticateSession(e.Request.Query["access_token"], e.Request.Query["session_id"], type);
             if (session == null)
             {
                 //Failed to authenticate

@@ -13,7 +13,7 @@ namespace DeltaUserGateway
     {
         public static ConcurrentBag<RPCSession> sessions = new ConcurrentBag<RPCSession>();
 
-        public static bool TryGetSessionByID(string id, out RPCSession session)
+        public static bool TryGetSessionByID(string id, RPCType type, out RPCSession session)
         {
             session = null;
             if (id == null)
@@ -21,11 +21,11 @@ namespace DeltaUserGateway
             if (id.Length == 0)
                 return false;
             lock (sessions)
-                session = sessions.Where(x => x.id == id).FirstOrDefault();
+                session = sessions.Where(x => x.id == id && x.type == type).FirstOrDefault();
             return session != null;
         }
 
-        public static RPCSession MakeSession()
+        public static RPCSession MakeSession(RPCType type)
         {
             string id;
             RPCSession session;
@@ -33,11 +33,11 @@ namespace DeltaUserGateway
             {
                 //Create ID
                 id = LibDeltaSystem.Tools.SecureStringTool.GenerateSecureString(24);
-                while (TryGetSessionByID(id, out session))
+                while (TryGetSessionByID(id, type, out session))
                     id = LibDeltaSystem.Tools.SecureStringTool.GenerateSecureString(24);
 
                 //Add session 
-                session = new RPCSession(id);
+                session = new RPCSession(id, type);
                 sessions.Add(session);
             }
             return session;
@@ -48,14 +48,14 @@ namespace DeltaUserGateway
         /// </summary>
         /// <param name="filter"></param>
         /// <param name="data"></param>
-        public static async Task DistributeMessage(RPCFilter filter, byte[] data)
+        public static async Task DistributeMessage(RPCFilter filter, byte[] data, RPCType type)
         {
             //We'll need an array of user IDs. Obtain those first.
             List<RPCSession> sessions;
             if(filter.type == "USER_ID")
             {
                 //The user ID is in the payload
-                sessions = GetUsersByUserID(new string[] { filter.keys["USER_ID"] });
+                sessions = GetUsersByUserID(new string[] { filter.keys["USER_ID"] }, type);
             } else if(filter.type == "SERVER" || filter.type == "TRIBE")
             {
                 //Get all users of the server
@@ -74,7 +74,7 @@ namespace DeltaUserGateway
                 }
 
                 //Find all users
-                sessions = GetUsersBySteamID(steamIds.ToArray());
+                sessions = GetUsersBySteamID(steamIds.ToArray(), type);
             } else
             {
                 throw new Exception("Unknown filter.");
@@ -96,11 +96,11 @@ namespace DeltaUserGateway
         /// </summary>
         /// <param name="steamId"></param>
         /// <param name="data"></param>
-        private static List<RPCSession> GetUsersBySteamID(string[] steamIds)
+        private static List<RPCSession> GetUsersBySteamID(string[] steamIds, RPCType type)
         {
             List<RPCSession> targets;
             lock (sessions)
-                targets = sessions.Where(x => steamIds.Contains(x.steam_id)).ToList();
+                targets = sessions.Where(x => steamIds.Contains(x.steam_id) && x.type == type).ToList();
             return targets;
         }
 
@@ -109,11 +109,11 @@ namespace DeltaUserGateway
         /// </summary>
         /// <param name="userIds"></param>
         /// <param name="data"></param>
-        private static List<RPCSession> GetUsersByUserID(string[] userIds)
+        private static List<RPCSession> GetUsersByUserID(string[] userIds, RPCType type)
         {
             List<RPCSession> targets;
             lock (sessions)
-                targets = sessions.Where(x => userIds.Contains(x.user_id)).ToList();
+                targets = sessions.Where(x => userIds.Contains(x.user_id) && x.type == type).ToList();
             return targets;
         }
     }
