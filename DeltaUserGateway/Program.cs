@@ -1,5 +1,7 @@
-﻿using DeltaUserGateway.Sender;
+﻿using DeltaUserGateway.Definitions;
 using LibDeltaSystem;
+using LibDeltaSystem.WebFramework;
+using LibDeltaSystem.WebFramework.WebSockets.Groups;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Newtonsoft.Json;
@@ -16,107 +18,37 @@ namespace DeltaUserGateway
     {
         public static GatewayConfig config;
         public static DeltaConnection conn;
-        public static SenderServerV2 sender;
+        public static WebSocketGroupHolder holder;
+
+        public static byte[] master_key; //The key to connect
 
         static void Main(string[] args)
         {
             //Load config
-            config = JsonConvert.DeserializeObject<GatewayConfig>(File.ReadAllText(args[0]));
+            config = JsonConvert.DeserializeObject<GatewayConfig>(File.ReadAllText(args[0])); 
 
             //Launch server
+            holder = new WebSocketGroupHolder();
             MainAsync().GetAwaiter().GetResult();
         }
 
         public static async Task MainAsync()
         {
             //Connect to database
-            conn = new DeltaConnection(config.database_config, "rpc-prod", 0, 0);
+            conn = new DeltaConnection(config.database_config, "rpc-prod", 1, 0);
             await conn.Connect();
+            master_key = Convert.FromBase64String(conn.config.rpc_key);
 
-            //Start the sender server
-            sender = new SenderServerV2(conn, Convert.FromBase64String(conn.config.rpc_key), conn.config.rpc_port);
-            sender.StartServer();
-
-            //Set up web server
-            var host = new WebHostBuilder()
-                .UseKestrel(options =>
-                {
-                    IPAddress addr = IPAddress.Any;
-                    options.Listen(addr, config.port);
-
-                })
-                .UseStartup<Program>()
-                .Build();
-
-            await host.RunAsync();
+            //Start server
+            DeltaWebServer server = new DeltaWebServer(conn, config.port);
+            server.AddService(new SenderDefinition());
+            server.AddService(new RPCSessionDefinition());
+            await server.RunAsync();
         }
 
-        public void Configure(IApplicationBuilder app)
+        /*public static async Task AcceptRootRequest(Microsoft.AspNetCore.Http.HttpContext e)
         {
-            var webSocketOptions = new WebSocketOptions()
-            {
-                KeepAliveInterval = TimeSpan.FromSeconds(config.timeout_seconds),
-                ReceiveBufferSize = config.buffer_size
-            };
-
-            app.UseWebSockets(webSocketOptions);
-
-            app.Run(OnHttpRequest);
-        }
-
-        public static async Task WriteStringToStreamAsync(Stream s, string content)
-        {
-            byte[] data = Encoding.UTF8.GetBytes(content);
-            await s.WriteAsync(data);
-        }
-
-        public static async Task OnHttpRequest(Microsoft.AspNetCore.Http.HttpContext e)
-        {
-            try
-            {
-                if (e.Request.Path == "/rpc/v1")
-                    await AcceptV1Request(e, RPCType.RPCSession);
-                if (e.Request.Path == "/notifications/v1")
-                    await AcceptV1Request(e, RPCType.RPCNotifications);
-                else if (e.Request.Path == "/")
-                    await AcceptRootRequest(e);
-                else
-                {
-                    e.Response.StatusCode = 404;
-                    await WriteStringToStreamAsync(e.Response.Body, "Not Found");
-                }
-            } catch (Exception ex)
-            {
-                //Log and display error
-                var error = await conn.LogHttpError(ex, new System.Collections.Generic.Dictionary<string, string>());
-                e.Response.StatusCode = 500;
-                await WriteStringToStreamAsync(e.Response.Body, JsonConvert.SerializeObject(error, Newtonsoft.Json.Formatting.Indented));
-            }
-        }
-
-        public static async Task AcceptV1Request(Microsoft.AspNetCore.Http.HttpContext e, RPCType type)
-        {
-            //First, authenticate this user
-            RPCSession session = await RPCSession.AuthenticateSession(e.Request.Query["access_token"], e.Request.Query["session_id"], type);
-            if (session == null)
-            {
-                //Failed to authenticate
-                e.Response.StatusCode = 401;
-                return;
-            }
-
-            //Accept the socket
-            var socket = await e.WebSockets.AcceptWebSocketAsync();
-
-            //Set up the client
-            WebsocketClient wc = new WebsocketClient();
-            await wc.Attach(session);
-            await wc.Run(socket);
-        }
-
-        public static async Task AcceptRootRequest(Microsoft.AspNetCore.Http.HttpContext e)
-        {
-            await WriteStringToStreamAsync(e.Response.Body, "DeltaWebMap RPC Server\n\nhttps://github.com/deltawebmap/RPC\n\n(C) DeltaWebMap 2019, RomanPort 2019");
-        }
+            await WriteStringToStreamAsync(e.Response.Body, "DeltaWebMap RPC Server\n\nhttps://github.com/deltawebmap/RPC\n\n(C) DeltaWebMap 2020, RomanPort 2020");
+        }*/
     }
 }

@@ -6,6 +6,7 @@ namespace DeltaUserGateway
 {
     public enum RPCType
     {
+        InternalSender,
         RPCSession,
         RPCNotifications
     }
