@@ -36,7 +36,7 @@ namespace DeltaUserGateway
         {
             //Connect to database
             conn = new DeltaConnection(config.database_config, "rpc-prod", 1, 0);
-            await conn.Connect();
+            await conn.Connect(false);
             master_key = Convert.FromBase64String(conn.config.rpc_key);
 
             //Start server
