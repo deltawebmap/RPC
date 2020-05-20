@@ -1,5 +1,6 @@
 ﻿using DeltaUserGateway.Queries;
 using LibDeltaSystem.WebFramework.WebSockets.Entities;
+using LibDeltaSystem.WebFramework.WebSockets.Groups;
 using MongoDB.Bson;
 using System;
 using System.Collections.Generic;
@@ -58,6 +59,26 @@ namespace DeltaUserGateway
 
             //Send event to all
             await group.SendDistributedMessage(message, new List<LibDeltaSystem.WebFramework.WebSockets.Groups.GroupWebSocketService>());
+
+            //Also send this to server admins, as they could also be viewing this tribe
+            int adminCount = await SendDataToServerAdminsById(type, id, message, group.clients);
+
+            return group.clients.Count + adminCount;
+        }
+
+        public static async Task<int> SendDataToServerAdminsById(RPCType type, ObjectId id, PackedWebSocketMessage message, List<GroupWebSocketService> ignoredClients)
+        {
+            //Find the group
+            var group = Program.holder.FindGroup(new RPCGroupQueryServerAdmin
+            {
+                type = type,
+                server_id = id
+            });
+            if (group == null)
+                return 0;
+
+            //Send event to all
+            await group.SendDistributedMessage(message, ignoredClients);
 
             return group.clients.Count;
         }

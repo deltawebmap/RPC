@@ -4,6 +4,7 @@ using LibDeltaSystem.Db.Content;
 using LibDeltaSystem.Db.System;
 using LibDeltaSystem.WebFramework.WebSockets.Groups;
 using Microsoft.AspNetCore.Http;
+using MongoDB.Bson;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,8 +14,6 @@ namespace DeltaUserGateway.Services
 {
     public class IRPCService : UserAuthenticatedGroupWebSocketService
     {
-        public List<Tuple<DbServer, DbPlayerProfile>> servers;
-
         public IRPCService(DeltaConnection conn, HttpContext e) : base(conn, e)
         {
         }
@@ -24,9 +23,6 @@ namespace DeltaUserGateway.Services
             //Call base
             if (!await base.OnPreRequest())
                 return false;
-
-            //Fetch user servers
-            servers = await user.GetGameServersAsync(conn);
             return true;
         }
 
@@ -44,8 +40,11 @@ namespace DeltaUserGateway.Services
                 user_id = user._id
             });
 
-            //Add server queries
-            foreach(var s in servers)
+            //Add servers we're in
+            var playerServers = await user.GetGameServersAsync(conn);
+            var adminServers = await user.GetAdminedServersAsync(conn);
+            List<ObjectId> serverIds = new List<ObjectId>();
+            foreach(var s in playerServers)
             {
                 queries.Add(new RPCGroupQueryServer
                 {
@@ -58,6 +57,22 @@ namespace DeltaUserGateway.Services
                     server_id = s.Item1._id,
                     tribe_id = s.Item2.tribe_id,
                     any_tribe_id = s.Item1.CheckIsUserAdmin(user)
+                });
+                serverIds.Add(s.Item1._id);
+            }
+            foreach(var s in adminServers)
+            {
+                queries.Add(new RPCGroupQueryServerAdmin
+                {
+                    type = type,
+                    server_id = s._id
+                });
+                if (serverIds.Contains(s._id))
+                    continue;
+                queries.Add(new RPCGroupQueryServer
+                {
+                    type = type,
+                    server_id = s._id
                 });
             }
 
